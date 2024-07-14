@@ -5,8 +5,10 @@ olddir=$dst/`ls -t1 $dst/|grep --invert-match "lost+found"|head -1`
 newdir=$dst/`date +%Y-%m-%d`
 curdir=$dst/current
 
-rsync_opt="--archive --numeric-ids --progress --relative --exclude-from=/etc/rsyncbackup.exclude"
-#rsync_opt="--archive --checksum --numeric-ids --progress --relative --exclude-from=/etc/rsyncbackup.exclude"
+confdir=$(dirname -- "${BASH_SOURCE[0]}")
+
+rsync_opt="--archive --numeric-ids --old-args --progress --relative --exclude-from=$confdir/rsyncbackup.exclude"
+#rsync_opt="--archive --checksum --numeric-ids --old-args --progress --relative --exclude-from=$confdir/rsyncbackup.exclude"
 
 log=/tmp/rsyncbackup.log
 
@@ -26,7 +28,7 @@ if [ "$snapshot" == "0" ]; then
 fi
 
 IFS=","
-cat /etc/rsyncbackup.csv | while read server files db
+cat $confdir/rsyncbackup.csv | while read server files db
 do
 	IFS=" "
 
@@ -58,6 +60,7 @@ do
 			echo "Executing mysqldump ${mysql_opt}"
 			mysqldump ${mysql_opt}|bzip2 -c >$dest_dir/mysql.sql.bz2
 		fi
+		echo "Executing rsync $rsync_opt $rsync_par ${files} $dest_dir/"
 		rsync $rsync_opt $rsync_par ${files} $dest_dir/
 		status_rsync=$?
 	else
@@ -65,6 +68,7 @@ do
 			echo "Executing mysqldump ${mysql_opt} on ${server}"
 			ssh -n ${server} "mysqldump ${mysql_opt}|bzip2 -c">$dest_dir/mysql.sql.bz2
 		fi
+		echo "Executing rsync $rsync_opt $rsync_par ${server}:"${files}" $dest_dir/"
 		rsync $rsync_opt $rsync_par ${server}:"${files}" $dest_dir/
 		status_rsync=$?
 	fi
